@@ -1,0 +1,57 @@
+# 🎓 Student Project: Credit Card Fraud Detection
+# 🧠 Idea: Use ML to spot fraud in credit card transactions
+# 🛠️ Models: Logistic Regression, Decision Tree, Random Forest
+# 🤝 Written in a friendly, student style!
+
+# Step 1: Import the libraries (our toolbox 🧰)
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
+
+# Step 2: Load the dataset 📂
+# Make sure you have a CSV file with a 'Class' column (1 = fraud, 0 = legit)
+df = pd.read_csv("creditcard.csv")  # Replace with your dataset path
+print("📊 Dataset shape:", df.shape)
+print("👀 First few rows:\n", df.head())
+
+# Step 3: Split features and target 🎯
+X = df.drop("Class", axis=1)  # Features (transaction details)
+y = df["Class"]               # Target (fraud or legit)
+
+# Step 4: Train-test split ✂️
+# 80% for training, 20% for testing
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+# Step 5: Scale features (important for Logistic Regression) ⚖️
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Step 6: Function to train & evaluate models 🧪
+def train_and_evaluate(model, name, X_tr, X_te):
+    print(f"\n🚀 Training: {name}")
+    model.fit(X_tr, y_train)
+    y_pred = model.predict(X_te)
+
+    # Results time 🎉
+    print("✅ Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+    print("📋 Classification Report:\n", classification_report(y_test, y_pred))
+    print("📈 ROC-AUC Score:", roc_auc_score(y_test, y_pred))
+
+# Step 7: Logistic Regression (simple but powerful 💡)
+lr = LogisticRegression(max_iter=1000, class_weight="balanced")
+train_and_evaluate(lr, "Logistic Regression", X_train_scaled, X_test_scaled)
+
+# Step 8: Decision Tree (easy to visualize 🌳)
+dt = DecisionTreeClassifier(class_weight="balanced", random_state=42)
+train_and_evaluate(dt, "Decision Tree", X_train, X_test)
+
+# Step 9: Random Forest (lots of trees working together 🌲🌲🌲)
+rf = RandomForestClassifier(n_estimators=100, class_weight="balanced", random_state=42)
+train_and_evaluate(rf, "Random Forest", X_train, X_test)
