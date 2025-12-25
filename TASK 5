@@ -1,0 +1,93 @@
+# 🎒 Step 1: Pack our neural backpack
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+# 📚 Step 2: Load the handwritten text dataset
+with open("handwritten_text.txt", "r") as file:  # Replace with your actual dataset
+    text = file.read()
+
+# 🔤 Step 3: Prepare the alphabet soup
+chars = sorted(list(set(text)))  # Unique characters = our vocabulary 🍲
+char_to_idx = {ch: i for i, ch in enumerate(chars)}  # Map each char to a number
+idx_to_char = {i: ch for i, ch in enumerate(chars)}  # Map number back to char
+data = [char_to_idx[ch] for ch in text]  # Convert entire text to numbers
+
+# 🎯 Step 4: Set our training rules (hyperparameters)
+seq_length = 100   # How many characters the model sees at once
+hidden_size = 256  # Brain size of the RNN 🧠
+num_layers = 2     # Number of memory layers
+batch_size = 64    # How many samples per training round
+num_epochs = 20    # How many times we loop through the data
+learning_rate = 0.003  # How fast the model learns
+
+# 🍱 Step 5: Slice the data into batches
+def get_batches(data, seq_length, batch_size):
+    batches = []
+    for i in range(0, len(data) - seq_length, batch_size):
+        x = data[i:i+seq_length]
+        y = data[i+1:i+seq_length+1]
+        batches.append((x, y))
+    return batches
+
+# 🧠 Step 6: Build our RNN model
+class CharRNN(nn.Module):
+    def __init__(self, vocab_size, hidden_size, num_layers):
+        super(CharRNN, self).__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.embed = nn.Embedding(vocab_size, hidden_size)  # Turns numbers into vectors
+        self.rnn = nn.LSTM(hidden_size, hidden_size, num_layers, batch_first=True)  # Memory machine
+        self.fc = nn.Linear(hidden_size, vocab_size)  # Final layer guesses the next character
+
+    def forward(self, x, hidden):
+        x = self.embed(x)
+        out, hidden = self.rnn(x, hidden)
+        out = self.fc(out.reshape(out.size(0)*out.size(1), out.size(2)))
+        return out, hidden
+
+    def init_hidden(self, batch_size):
+        return (torch.zeros(self.num_layers, batch_size, self.hidden_size),
+                torch.zeros(self.num_layers, batch_size, self.hidden_size))
+
+# 🚀 Step 7: Train the model
+model = CharRNN(len(chars), hidden_size, num_layers)
+optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+criterion = nn.CrossEntropyLoss()
+
+for epoch in range(num_epochs):
+    hidden = model.init_hidden(batch_size)
+    batches = get_batches(data, seq_length, batch_size)
+    total_loss = 0
+
+    for x_batch, y_batch in batches:
+        x_tensor = torch.tensor(x_batch).unsqueeze(0)
+        y_tensor = torch.tensor(y_batch)
+
+        output, hidden = model(x_tensor, hidden)
+        loss = criterion(output, y_tensor.view(-1))
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
+
+    print(f"📅 Epoch {epoch+1}/{num_epochs} — Loss: {total_loss:.4f}")
+
+# ✨ Step 8: Generate new handwritten-style text
+def generate_text(model, start_str, length=200):
+    model.eval()
+    input_seq = torch.tensor([char_to_idx[ch] for ch in start_str]).unsqueeze(0)
+    hidden = model.init_hidden(1)
+    result = start_str
+
+    for _ in range(length):
+        output, hidden = model(input_seq, hidden)
+        pred_idx = torch.argmax(output[-1]).item()
+        result += idx_to_char[pred_idx]
+        input_seq = torch.tensor([[pred_idx]])
+
+    return result
+
+# 📝 Try it out!
+print("🖋️ Generated Text:")
+print(generate_text(model, start_str="Dear friend,", length=300))
